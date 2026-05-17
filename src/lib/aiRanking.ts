@@ -1,48 +1,30 @@
-export function calculateAIScore(
-  provider: any
-) {
+export function calculateAIScore(provider: any) {
 
-  const rating =
-    Number(
-      provider.average_rating || 0
-    ) * 25;
+  let score = 0;
 
-  const views =
-    Number(
-      provider.total_views || 0
-    ) * 0.05;
+  score +=
+    (provider.total_bookings || 0) * 5;
 
-  const bookings =
-    Number(
-      provider.total_bookings ||
-        0
-    ) * 3;
+  score +=
+    (provider.total_views || 0) * 2;
 
-  const premium =
-    provider.premium ? 40 : 0;
+  score +=
+    (provider.rating || 0) * 20;
 
-  const verified =
-    provider.verified ? 50 : 0;
+  score +=
+    (provider.trust_score || 0);
 
-  const trust =
-    Number(
-      provider.trust_score || 0
-    );
+  if (provider.verified) {
+    score += 100;
+  }
 
-  const completion =
-    Number(
-      provider.completion_rate ||
-        0
-    ) * 2;
+  if (provider.premium) {
+    score += 150;
+  }
 
-  const score =
-    rating +
-    views +
-    bookings +
-    premium +
-    verified +
-    trust +
-    completion;
+  if (provider.featured) {
+    score += 200;
+  }
 
-  return Math.round(score);
+  return Math.floor(score);
 }

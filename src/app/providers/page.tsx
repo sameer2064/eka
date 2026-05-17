@@ -1,217 +1,242 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
-import ProviderCard from "@/components/ProviderCard";
+import { supabase } from "@/lib/supabase";
 
 export default function ProvidersPage() {
 
   const [providers, setProviders] =
     useState<any[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
-
   const [search, setSearch] =
     useState("");
 
-  const [sortBy, setSortBy] =
-    useState("rating");
+  const [city, setCity] =
+    useState("");
 
   useEffect(() => {
-    fetchProviders();
+    loadProviders();
   }, []);
 
-  async function fetchProviders() {
+  async function loadProviders() {
 
-    try {
+    const { data } = await supabase
+      .from("providers")
+      .select("*")
+      .eq("approved", true)
+      .order("ai_score", {
+        ascending: false,
+      });
 
-      const response =
-        await fetch(
-          "/api/providers"
-        );
-
-      const result =
-        await response.json();
-
-      if (result.success) {
-
-        let data =
-          result.providers || [];
-
-        if (sortBy === "rating") {
-
-          data.sort(
-            (a: any, b: any) =>
-              (b.average_rating ||
-                0) -
-              (a.average_rating ||
-                0)
-          );
-        }
-
-        if (sortBy === "views") {
-
-          data.sort(
-            (a: any, b: any) =>
-              (b.total_views || 0) -
-              (a.total_views ||
-                0)
-          );
-        }
-
-        if (
-          sortBy === "bookings"
-        ) {
-
-          data.sort(
-            (a: any, b: any) =>
-              (b.total_bookings ||
-                0) -
-              (a.total_bookings ||
-                0)
-          );
-        }
-
-        setProviders(data);
-      }
-
-    } catch (err) {
-
-      console.log(err);
-
-    } finally {
-
-      setLoading(false);
-    }
+    setProviders(data || []);
   }
 
   const filteredProviders =
-    providers.filter(
-      (provider: any) =>
+    providers.filter((provider) => {
+
+      const matchesSearch =
         provider.full_name
           ?.toLowerCase()
-          .includes(
-            search.toLowerCase()
-          ) ||
+          .includes(search.toLowerCase()) ||
+
         provider.service_category
           ?.toLowerCase()
-          .includes(
-            search.toLowerCase()
-          ) ||
+          .includes(search.toLowerCase());
+
+      const matchesCity =
+        city === "" ||
         provider.city
           ?.toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
-    );
+          .includes(city.toLowerCase());
 
-  if (loading) {
-
-    return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center text-4xl">
-        Loading...
-      </div>
-    );
-  }
+      return matchesSearch && matchesCity;
+    });
 
   return (
-    <main className="bg-black text-white min-h-screen">
 
-      <Navbar />
+    <main className="min-h-screen text-white">
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <section className="max-w-7xl mx-auto px-6 pt-32 pb-24">
 
-        <div className="flex justify-between items-center flex-wrap gap-8 mb-14">
+        <div className="mb-14">
 
-          <div>
+          <p className="uppercase tracking-[0.3em] text-red-500 font-semibold mb-5">
+            Marketplace
+          </p>
 
-            <h1 className="text-7xl font-bold">
-              Marketplace
-            </h1>
+          <h1 className="heading-xl mb-8">
+            Explore providers.
+          </h1>
 
-            <p className="text-zinc-400 text-2xl mt-4">
-              Nepal’s intelligent service marketplace
-            </p>
+          <div className="grid lg:grid-cols-2 gap-5">
 
-          </div>
+            <input
+              placeholder="Search services or providers..."
+              value={search}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
+              className="input-primary"
+            />
 
-          <div className="bg-green-500 text-black px-6 py-3 rounded-full text-xl font-black">
-            API POWERED
+            <input
+              placeholder="Filter by city..."
+              value={city}
+              onChange={(e) =>
+                setCity(e.target.value)
+              }
+              className="input-primary"
+            />
+
           </div>
 
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5 mb-14">
+        <div className="grid lg:grid-cols-3 gap-8">
 
-          <input
-            value={search}
-            onChange={(e) =>
-              setSearch(
-                e.target.value
-              )
-            }
-            placeholder="Search providers..."
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-          />
+          {filteredProviders.map((provider) => (
 
-          <select
-            value={sortBy}
-            onChange={(e) =>
-              setSortBy(
-                e.target.value
-              )
-            }
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-          >
+            <div
+              key={provider.id}
+              className={`premium-card rounded-[36px] p-8 relative overflow-hidden ${
+                provider.featured
+                  ? "border border-yellow-500/30"
+                  : ""
+              }`}
+            >
 
-            <option value="rating">
-              Top Rated
-            </option>
+              {provider.premium && (
 
-            <option value="views">
-              Most Viewed
-            </option>
+                <div className="absolute top-5 right-5 bg-yellow-500 text-black px-4 py-2 rounded-full text-xs font-black">
+                  PREMIUM
+                </div>
 
-            <option value="bookings">
-              Most Booked
-            </option>
+              )}
 
-          </select>
+              <div className="flex items-center gap-5 mb-8">
 
-        </div>
-
-        {filteredProviders.length ===
-        0 ? (
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-20 text-center">
-
-            <h2 className="text-5xl font-bold">
-              No Providers Found
-            </h2>
-
-          </div>
-
-        ) : (
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-            {filteredProviders.map(
-              (provider: any) => (
-
-                <ProviderCard
-                  key={provider.id}
-                  provider={provider}
+                <img
+                  src={
+                    provider.profile_image ||
+                    "https://placehold.co/200x200"
+                  }
+                  className="w-24 h-24 rounded-[28px] object-cover border border-white/10"
                 />
 
-              )
-            )}
+                <div>
 
-          </div>
+                  <div className="flex items-center gap-3 mb-2">
 
-        )}
+                    <h2 className="text-3xl font-bold">
+                      {provider.full_name}
+                    </h2>
 
-      </div>
+                    {provider.verified && (
+                      <div className="bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-bold">
+                        VERIFIED
+                      </div>
+                    )}
+
+                  </div>
+
+                  <p className="text-zinc-400">
+                    {provider.service_category}
+                  </p>
+
+                  <p className="text-zinc-500 text-sm mt-2">
+                    📍 {provider.city}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-8">
+
+                <div className="glass rounded-2xl p-5">
+
+                  <p className="text-zinc-500 text-sm mb-2">
+                    AI
+                  </p>
+
+                  <h3 className="text-3xl font-black text-green-400">
+                    {provider.ai_score || 0}
+                  </h3>
+
+                </div>
+
+                <div className="glass rounded-2xl p-5">
+
+                  <p className="text-zinc-500 text-sm mb-2">
+                    Trust
+                  </p>
+
+                  <h3 className="text-3xl font-black">
+                    {provider.trust_score || 0}
+                  </h3>
+
+                </div>
+
+                <div className="glass rounded-2xl p-5">
+
+                  <p className="text-zinc-500 text-sm mb-2">
+                    Rating
+                  </p>
+
+                  <h3 className="text-3xl font-black text-yellow-400">
+                    {provider.rating || 0}
+                  </h3>
+
+                </div>
+
+                <div className="glass rounded-2xl p-5">
+
+                  <p className="text-zinc-500 text-sm mb-2">
+                    Bookings
+                  </p>
+
+                  <h3 className="text-3xl font-black">
+                    {provider.total_bookings || 0}
+                  </h3>
+
+                </div>
+
+              </div>
+
+              <div className="flex items-center justify-between mb-8">
+
+                <div className="flex items-center gap-3 text-green-400">
+
+                  <div className="live-dot" />
+
+                  Online
+
+                </div>
+
+                <p className="text-zinc-500 text-sm">
+                  Fast Response
+                </p>
+
+              </div>
+
+              <Link
+                href={`/providers/${provider.id}`}
+              >
+
+                <button className="button-primary w-full">
+                  View Provider
+                </button>
+
+              </Link>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      </section>
 
     </main>
   );

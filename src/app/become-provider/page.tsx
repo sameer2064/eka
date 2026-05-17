@@ -1,308 +1,181 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import Navbar from "@/components/Navbar";
 
 export default function BecomeProviderPage() {
-  const [fullName, setFullName] =
-    useState("");
 
-  const [phone, setPhone] =
-    useState("");
-
-  const [serviceCategory,
-    setServiceCategory] =
-    useState("");
-
-  const [city, setCity] =
-    useState("");
-
-  const [imageFile, setImageFile] =
-    useState<File | null>(null);
+  const router = useRouter();
 
   const [loading, setLoading] =
     useState(false);
 
-  const [user, setUser] =
-    useState<any>(null);
+  const [form, setForm] =
+    useState({
+      full_name: "",
+      phone: "",
+      city: "",
+      service_category: "",
+      bio: "",
+    });
 
-  useEffect(() => {
-    checkUser();
-  }, []);
+  async function createProvider() {
 
-  async function checkUser() {
+    setLoading(true);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      alert("Please login first");
-
-      window.location.href =
-        "/login";
-
+      alert("Login first");
       return;
     }
 
-    setUser(user);
-  }
-
-  async function handleSubmit(
-    e: any
-  ) {
-    e.preventDefault();
-
-    if (!imageFile) {
-      alert("Please select image");
-      return;
-    }
-
-    if (!user) {
-      alert("User not logged in");
-      return;
-    }
-
-    setLoading(true);
-
-    const fileName = `${Date.now()}-${imageFile.name}`;
-
-    const {
-      error: uploadError,
-    } = await supabase.storage
-      .from("providers")
-      .upload(
-        fileName,
-        imageFile
-      );
-
-    if (uploadError) {
-      console.log(uploadError);
-
-      alert(
-        "Image upload failed"
-      );
-
-      setLoading(false);
-
-      return;
-    }
-
-    const { data } =
-      supabase.storage
-        .from("providers")
-        .getPublicUrl(fileName);
-
-    const imageUrl =
-      data.publicUrl;
-
-    const { error } =
+    const { data: existing } =
       await supabase
         .from("providers")
-        .insert([
-          {
-            full_name:
-              fullName,
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
 
-            phone: phone,
-
-            service_category:
-              serviceCategory,
-
-            city: city,
-
-            profile_image:
-              imageUrl,
-
-            user_id: user.id,
-
-            approved: false,
-          },
-        ]);
-
-    if (error) {
-      console.log(error);
-
-      alert(
-        "Error adding provider"
-      );
-    } else {
-      alert(
-        "Provider submitted for approval"
-      );
-
-      window.location.href =
-        "/dashboard";
+    if (existing) {
+      router.push("/dashboard");
+      return;
     }
 
-    setLoading(false);
-  }
+    await supabase
+      .from("providers")
+      .insert({
+        user_id: user.id,
+        full_name: form.full_name,
+        phone: form.phone,
+        city: form.city,
+        service_category:
+          form.service_category,
+        bio: form.bio,
 
-  if (!user) {
-    return (
-      <div className="bg-black min-h-screen"></div>
-    );
+        verified: false,
+        approved: false,
+        featured: false,
+        premium: false,
+
+        total_bookings: 0,
+        total_views: 0,
+        trust_score: 20,
+        ai_score: 20,
+        trending_score: 0,
+        completion_rate: 0,
+      });
+
+    alert("Provider account created");
+
+    router.push("/dashboard");
   }
 
   return (
-    <main className="bg-black min-h-screen text-white">
 
-      <Navbar />
+    <main className="min-h-screen bg-black text-white">
 
-      <div className="max-w-2xl mx-auto py-20 px-6">
+      <section className="max-w-3xl mx-auto px-6 py-32">
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10">
+        <div className="mb-16">
 
-          <h1 className="text-5xl font-bold mb-4">
+          <p className="uppercase tracking-[0.3em] text-red-500 font-semibold mb-6">
+            Provider Onboarding
+          </p>
+
+          <h1 className="text-7xl font-black mb-6">
             Become a Provider
           </h1>
 
-          <p className="text-zinc-400 text-xl mb-10">
-            Your profile will be reviewed before approval.
+          <p className="text-zinc-400 text-2xl">
+            Join Nepal’s intelligent
+            AI-powered marketplace.
           </p>
-
-          <form
-            onSubmit={
-              handleSubmit
-            }
-            className="space-y-6"
-          >
-
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={fullName}
-              onChange={(e) =>
-                setFullName(
-                  e.target.value
-                )
-              }
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <input
-              type="text"
-              placeholder="Phone Number"
-              value={phone}
-              onChange={(e) =>
-                setPhone(
-                  e.target.value
-                )
-              }
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <select
-              value={
-                serviceCategory
-              }
-              onChange={(e) =>
-                setServiceCategory(
-                  e.target.value
-                )
-              }
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            >
-
-              <option value="">
-                Select Service
-              </option>
-
-              <option>
-                Electrician
-              </option>
-
-              <option>
-                Plumber
-              </option>
-
-              <option>
-                Mechanic
-              </option>
-
-              <option>
-                CCTV
-              </option>
-
-              <option>
-                Painter
-              </option>
-
-              <option>
-                Carpenter
-              </option>
-
-            </select>
-
-            <select
-              value={city}
-              onChange={(e) =>
-                setCity(
-                  e.target.value
-                )
-              }
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            >
-
-              <option value="">
-                Select City
-              </option>
-
-              <option>
-                Kathmandu
-              </option>
-
-              <option>
-                Lalitpur
-              </option>
-
-              <option>
-                Bhaktapur
-              </option>
-
-              <option>
-                Pokhara
-              </option>
-
-              <option>
-                Butwal
-              </option>
-
-            </select>
-
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(
-                e: any
-              ) =>
-                setImageFile(
-                  e.target.files[0]
-                )
-              }
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5"
-              required
-            />
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-red-500 hover:bg-red-600 transition py-5 rounded-2xl text-2xl font-bold"
-            >
-              {loading
-                ? "Uploading..."
-                : "Submit For Approval"}
-            </button>
-
-          </form>
 
         </div>
 
-      </div>
+        <div className="glass rounded-[40px] p-10 space-y-6">
+
+          <input
+            placeholder="Full name"
+            value={form.full_name}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                full_name: e.target.value,
+              })
+            }
+            className="w-full bg-black border border-zinc-800 rounded-2xl p-6 text-lg outline-none"
+          />
+
+          <input
+            placeholder="Phone"
+            value={form.phone}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                phone: e.target.value,
+              })
+            }
+            className="w-full bg-black border border-zinc-800 rounded-2xl p-6 text-lg outline-none"
+          />
+
+          <input
+            placeholder="City"
+            value={form.city}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                city: e.target.value,
+              })
+            }
+            className="w-full bg-black border border-zinc-800 rounded-2xl p-6 text-lg outline-none"
+          />
+
+          <input
+            placeholder="Service category"
+            value={form.service_category}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                service_category:
+                  e.target.value,
+              })
+            }
+            className="w-full bg-black border border-zinc-800 rounded-2xl p-6 text-lg outline-none"
+          />
+
+          <textarea
+            rows={5}
+            placeholder="Professional bio"
+            value={form.bio}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                bio: e.target.value,
+              })
+            }
+            className="w-full bg-black border border-zinc-800 rounded-2xl p-6 text-lg outline-none"
+          />
+
+          <button
+            onClick={createProvider}
+            disabled={loading}
+            className="w-full bg-red-500 hover:bg-red-600 transition rounded-2xl py-6 text-xl font-bold"
+          >
+
+            {loading
+              ? "Creating..."
+              : "Create Provider Account"}
+
+          </button>
+
+        </div>
+
+      </section>
 
     </main>
   );

@@ -1,420 +1,335 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 export default function DashboardPage() {
+
   const [provider, setProvider] =
     useState<any>(null);
-
-  const [bookings, setBookings] =
-    useState<any[]>([]);
-
-  const [notifications,
-    setNotifications] =
-    useState<any[]>([]);
 
   const [loading, setLoading] =
     useState(true);
 
   useEffect(() => {
-    initializeDashboard();
+    loadProvider();
   }, []);
 
-  async function initializeDashboard() {
+  async function loadProvider() {
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      window.location.href =
-        "/login";
-
-      return;
-    }
-
-    const { data } =
-      await supabase
-        .from("providers")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-    if (!data) {
       setLoading(false);
       return;
     }
 
+    const { data } = await supabase
+      .from("providers")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
     setProvider(data);
-
-    await fetchBookings(data.id);
-
-    await fetchNotifications(
-      data.id
-    );
-
-    setupRealtime(data.id);
 
     setLoading(false);
   }
 
-  async function fetchBookings(
-    providerId: string
-  ) {
-    const { data } =
-      await supabase
-        .from("bookings")
-        .select("*")
-        .eq(
-          "provider_id",
-          providerId
-        )
-        .order("created_at", {
-          ascending: false,
-        });
-
-    setBookings(data || []);
-  }
-
-  async function fetchNotifications(
-    providerId: string
-  ) {
-    const { data } =
-      await supabase
-        .from("notifications")
-        .select("*")
-        .eq(
-          "provider_id",
-          providerId
-        )
-        .order("created_at", {
-          ascending: false,
-        });
-
-    setNotifications(
-      data || []
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+        <h1 className="text-4xl font-black">
+          Loading Dashboard...
+        </h1>
+      </main>
     );
   }
 
-  function setupRealtime(
-    providerId: string
-  ) {
-
-    supabase
-      .channel(
-        "provider-bookings"
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookings",
-          filter: `provider_id=eq.${providerId}`,
-        },
-        () => {
-          fetchBookings(
-            providerId
-          );
-        }
-      )
-      .subscribe();
-
-    supabase
-      .channel(
-        "provider-notifications"
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table:
-            "notifications",
-          filter: `provider_id=eq.${providerId}`,
-        },
-        () => {
-          fetchNotifications(
-            providerId
-          );
-        }
-      )
-      .subscribe();
-  }
-
-  async function updateBookingStatus(
-    bookingId: string,
-    status: string
-  ) {
-
-    await supabase
-      .from("bookings")
-      .update({
-        status,
-      })
-      .eq("id", bookingId);
-  }
-
-  if (loading) {
+  if (!provider) {
     return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center text-4xl">
-        Loading...
-      </div>
+
+      <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+
+        <div className="glass rounded-[40px] p-14 text-center max-w-2xl">
+
+          <p className="uppercase tracking-[0.3em] text-red-500 font-semibold mb-6">
+            Provider Required
+          </p>
+
+          <h1 className="text-6xl font-black mb-6">
+            Become a Provider
+          </h1>
+
+          <p className="text-zinc-400 text-xl mb-10 leading-relaxed">
+            You do not yet have a provider
+            account. Create your professional
+            marketplace profile to continue.
+          </p>
+
+          <Link href="/become-provider">
+
+            <button className="bg-red-500 hover:bg-red-600 transition px-10 py-5 rounded-2xl text-xl font-bold">
+              Become Provider
+            </button>
+
+          </Link>
+
+        </div>
+
+      </main>
     );
   }
 
   return (
-    <main className="bg-black text-white min-h-screen">
 
-      <Navbar />
+    <main className="min-h-screen bg-black text-white">
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <section className="max-w-7xl mx-auto px-6 py-24">
 
-        <div className="flex justify-between items-center mb-14">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-10 mb-20">
 
           <div>
 
-            <h1 className="text-6xl font-bold">
-              Live Dashboard
+            <p className="uppercase tracking-[0.3em] text-red-500 font-semibold mb-6">
+              Provider Workspace
+            </p>
+
+            <h1 className="text-7xl font-black mb-6 leading-none">
+              Welcome back,
+              <br />
+              {provider.full_name}
             </h1>
 
-            <p className="text-zinc-400 text-xl mt-4">
-              Real-time provider operations
+            <p className="text-zinc-400 text-2xl max-w-3xl leading-relaxed">
+              Manage bookings, visibility,
+              rankings and marketplace growth.
             </p>
 
           </div>
 
-          <div className="bg-green-500 text-black px-6 py-3 rounded-full text-xl font-black animate-pulse">
-            LIVE
+          <div className="flex gap-4 flex-wrap">
+
+            <Link href="/dashboard/settings">
+
+              <button className="bg-black border border-zinc-800 hover:border-red-500 transition px-8 py-5 rounded-2xl font-bold text-lg">
+                Edit Profile
+              </button>
+
+            </Link>
+
+            <Link href="/dashboard/portfolio">
+
+              <button className="bg-red-500 hover:bg-red-600 transition px-8 py-5 rounded-2xl font-bold text-lg">
+                Portfolio
+              </button>
+
+            </Link>
+
           </div>
 
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-16">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8 mb-20">
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass rounded-[32px] p-8 border-t-2 border-red-500">
 
-            <p className="text-zinc-500 text-xl">
-              Live Leads
+            <p className="text-zinc-500 text-lg mb-6">
+              Bookings
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              {bookings.length}
+            <h2 className="text-6xl font-black">
+              {provider.total_bookings || 0}
             </h2>
 
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass rounded-[32px] p-8 border-t-2 border-green-500">
 
-            <p className="text-zinc-500 text-xl">
-              Notifications
+            <p className="text-zinc-500 text-lg mb-6">
+              Trust Score
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              {
-                notifications.length
-              }
+            <h2 className="text-6xl font-black">
+              {provider.trust_score || 0}
             </h2>
 
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass rounded-[32px] p-8 border-t-2 border-blue-500">
 
-            <p className="text-zinc-500 text-xl">
+            <p className="text-zinc-500 text-lg mb-6">
+              AI Score
+            </p>
+
+            <h2 className="text-6xl font-black">
+              {provider.ai_score || 0}
+            </h2>
+
+          </div>
+
+          <div className="glass rounded-[32px] p-8 border-t-2 border-yellow-500">
+
+            <p className="text-zinc-500 text-lg mb-6">
               Rating
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              ⭐{" "}
-              {provider.average_rating ||
-                0}
-            </h2>
-
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-
-            <p className="text-zinc-500 text-xl">
-              Views
-            </p>
-
-            <h2 className="text-6xl font-bold mt-4">
-              {provider.total_views ||
-                0}
+            <h2 className="text-6xl font-black">
+              {provider.rating || 0}
             </h2>
 
           </div>
 
         </div>
 
-        <section className="mb-20">
+        <div className="grid lg:grid-cols-2 gap-8">
 
-          <h2 className="text-5xl font-bold mb-10">
-            Live Notifications
-          </h2>
+          <div className="glass rounded-[40px] p-10">
 
-          {notifications.length ===
-          0 ? (
+            <div className="flex items-center justify-between mb-10">
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-12 text-center">
+              <h2 className="text-4xl font-black">
+                Marketplace Status
+              </h2>
 
-              <h3 className="text-4xl font-bold">
-                No Notifications
-              </h3>
+              <div className="flex items-center gap-3 text-green-400">
 
-            </div>
+                <div className="w-4 h-4 rounded-full bg-green-400 animate-pulse" />
 
-          ) : (
+                Active
 
-            <div className="space-y-5">
-
-              {notifications.map(
-                (notification) => (
-
-                  <div
-                    key={
-                      notification.id
-                    }
-                    className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8"
-                  >
-
-                    <h3 className="text-3xl font-bold">
-                      {
-                        notification.title
-                      }
-                    </h3>
-
-                    <p className="text-zinc-300 text-xl mt-4">
-                      {
-                        notification.message
-                      }
-                    </p>
-
-                  </div>
-
-                )
-              )}
+              </div>
 
             </div>
 
-          )}
+            <div className="grid grid-cols-2 gap-6">
 
-        </section>
+              <div className="bg-black rounded-3xl p-8">
 
-        <section>
+                <p className="text-zinc-500 mb-4">
+                  Verification
+                </p>
 
-          <h2 className="text-5xl font-bold mb-10">
-            Live Customer Leads
-          </h2>
+                <h3 className="text-3xl font-black">
 
-          {bookings.length ===
-          0 ? (
+                  {provider.verified
+                    ? "Verified"
+                    : "Pending"}
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-12 text-center">
+                </h3>
 
-              <h3 className="text-4xl font-bold">
-                No Leads Yet
-              </h3>
+              </div>
 
-            </div>
+              <div className="bg-black rounded-3xl p-8">
 
-          ) : (
+                <p className="text-zinc-500 mb-4">
+                  Premium
+                </p>
 
-            <div className="space-y-6">
+                <h3 className="text-3xl font-black">
 
-              {bookings.map(
-                (booking) => (
+                  {provider.premium
+                    ? "Active"
+                    : "Inactive"}
 
-                  <div
-                    key={booking.id}
-                    className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8"
-                  >
+                </h3>
 
-                    <div className="flex justify-between items-start">
+              </div>
 
-                      <div>
+              <div className="bg-black rounded-3xl p-8">
 
-                        <h3 className="text-4xl font-bold">
-                          {
-                            booking.customer_name
-                          }
-                        </h3>
+                <p className="text-zinc-500 mb-4">
+                  Featured
+                </p>
 
-                        <p className="text-zinc-400 text-xl mt-3">
-                          {
-                            booking.customer_phone
-                          }
-                        </p>
+                <h3 className="text-3xl font-black">
 
-                        <p className="text-zinc-300 text-xl mt-6">
-                          {
-                            booking.message
-                          }
-                        </p>
+                  {provider.featured
+                    ? "Featured"
+                    : "Normal"}
 
-                      </div>
+                </h3>
 
-                      <div className="bg-red-500 px-5 py-2 rounded-full text-lg font-bold">
-                        {
-                          booking.status
-                        }
-                      </div>
+              </div>
 
-                    </div>
+              <div className="bg-black rounded-3xl p-8">
 
-                    <div className="flex gap-4 mt-8">
+                <p className="text-zinc-500 mb-4">
+                  City
+                </p>
 
-                      <button
-                        onClick={() =>
-                          updateBookingStatus(
-                            booking.id,
-                            "accepted"
-                          )
-                        }
-                        className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-2xl text-lg font-bold"
-                      >
-                        Accept
-                      </button>
+                <h3 className="text-3xl font-black">
+                  {provider.city || "-"}
+                </h3>
 
-                      <button
-                        onClick={() =>
-                          updateBookingStatus(
-                            booking.id,
-                            "completed"
-                          )
-                        }
-                        className="bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-2xl text-lg font-bold"
-                      >
-                        Complete
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          updateBookingStatus(
-                            booking.id,
-                            "rejected"
-                          )
-                        }
-                        className="bg-red-500 hover:bg-red-600 px-6 py-3 rounded-2xl text-lg font-bold"
-                      >
-                        Reject
-                      </button>
-
-                    </div>
-
-                  </div>
-
-                )
-              )}
+              </div>
 
             </div>
 
-          )}
+          </div>
 
-        </section>
+          <div className="glass rounded-[40px] p-10">
 
-      </div>
+            <div className="flex items-center justify-between mb-10">
+
+              <h2 className="text-4xl font-black">
+                Professional Profile
+              </h2>
+
+              <div className="text-red-400">
+                AI Ranked
+              </div>
+
+            </div>
+
+            <div className="space-y-8">
+
+              <div>
+
+                <p className="text-zinc-500 mb-3">
+                  Service Category
+                </p>
+
+                <h3 className="text-3xl font-black">
+                  {provider.service_category}
+                </h3>
+
+              </div>
+
+              <div>
+
+                <p className="text-zinc-500 mb-3">
+                  Bio
+                </p>
+
+                <p className="text-zinc-300 text-lg leading-relaxed">
+                  {provider.bio || "No bio yet"}
+                </p>
+
+              </div>
+
+              <div>
+
+                <p className="text-zinc-500 mb-3">
+                  Availability
+                </p>
+
+                <h3 className="text-2xl font-bold">
+                  {provider.availability ||
+                    "Not updated"}
+                </h3>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
 
     </main>
   );

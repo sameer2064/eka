@@ -1,36 +1,11 @@
-import type { Metadata }
-from "next";
-
 import "./globals.css";
 
-export const metadata:
-Metadata = {
+import Navbar from "@/components/Navbar";
 
-  title:
-    "EKA - Nepal’s Trusted Home Services Marketplace",
-
+export const metadata = {
+  title: "EKA",
   description:
-    "Find trusted plumbers, electricians, CCTV installers and verified home service professionals across Nepal.",
-
-  keywords: [
-    "Nepal home services",
-    "plumber Nepal",
-    "electrician Nepal",
-    "CCTV installer Nepal",
-    "home repair Nepal",
-    "service marketplace Nepal",
-  ],
-
-  openGraph: {
-
-    title:
-      "EKA Marketplace",
-
-    description:
-      "Trusted verified home services across Nepal.",
-
-    type: "website",
-  },
+    "Nepal AI Powered Marketplace",
 };
 
 export default function RootLayout({
@@ -40,12 +15,18 @@ export default function RootLayout({
 }) {
 
   return (
+
     <html lang="en">
 
-      <body>
+      <body className="bg-black text-white">
+
+        <Navbar />
+
         {children}
+
       </body>
 
     </html>
+
   );
 }

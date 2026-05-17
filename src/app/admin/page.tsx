@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
 export default function AdminPage() {
@@ -9,44 +8,26 @@ export default function AdminPage() {
   const [providers, setProviders] =
     useState<any[]>([]);
 
-  const [reports, setReports] =
-    useState<any[]>([]);
-
-  const [verifications,
-    setVerifications] =
+  const [bookings, setBookings] =
     useState<any[]>([]);
 
   const [stats, setStats] =
-    useState<any>({
-      providers: 0,
-      jobs: 0,
-      bookings: 0,
-      reports: 0,
+    useState({
+      totalProviders: 0,
+      totalBookings: 0,
+      revenue: 0,
+      pendingProviders: 0,
     });
 
-  const [loading, setLoading] =
-    useState(true);
-
   useEffect(() => {
-    initialize();
+
+    loadData();
+
   }, []);
 
-  async function initialize() {
+  async function loadData() {
 
-    await fetchProviders();
-
-    await fetchReports();
-
-    await fetchVerifications();
-
-    await fetchStats();
-
-    setLoading(false);
-  }
-
-  async function fetchProviders() {
-
-    const { data } =
+    const { data: providersData } =
       await supabase
         .from("providers")
         .select("*")
@@ -54,82 +35,31 @@ export default function AdminPage() {
           ascending: false,
         });
 
-    setProviders(data || []);
-  }
-
-  async function fetchReports() {
-
-    const { data } =
-      await supabase
-        .from("reports")
-        .select("*")
-        .eq("resolved", false)
-        .order("created_at", {
-          ascending: false,
-        });
-
-    setReports(data || []);
-  }
-
-  async function fetchVerifications() {
-
-    const { data } =
-      await supabase
-        .from(
-          "provider_verifications"
-        )
-        .select("*")
-        .eq("verified", false)
-        .eq("rejected", false);
-
-    setVerifications(
-      data || []
-    );
-  }
-
-  async function fetchStats() {
-
-    const providersCount =
-      await supabase
-        .from("providers")
-        .select("*", {
-          count: "exact",
-          head: true,
-        });
-
-    const jobsCount =
-      await supabase
-        .from("jobs")
-        .select("*", {
-          count: "exact",
-          head: true,
-        });
-
-    const bookingsCount =
+    const { data: bookingsData } =
       await supabase
         .from("bookings")
-        .select("*", {
-          count: "exact",
-          head: true,
+        .select("*")
+        .order("created_at", {
+          ascending: false,
         });
 
-    const reportsCount =
-      await supabase
-        .from("reports")
-        .select("*", {
-          count: "exact",
-          head: true,
-        });
+    setProviders(providersData || []);
+    setBookings(bookingsData || []);
 
     setStats({
-      providers:
-        providersCount.count || 0,
-      jobs:
-        jobsCount.count || 0,
-      bookings:
-        bookingsCount.count || 0,
-      reports:
-        reportsCount.count || 0,
+      totalProviders:
+        providersData?.length || 0,
+
+      totalBookings:
+        bookingsData?.length || 0,
+
+      revenue:
+        (bookingsData?.length || 0) * 2500,
+
+      pendingProviders:
+        providersData?.filter(
+          (p) => !p.approved
+        ).length || 0,
     });
   }
 
@@ -144,325 +74,286 @@ export default function AdminPage() {
       })
       .eq("id", id);
 
-    fetchProviders();
+    loadData();
   }
 
-  async function banProvider(
+  async function removeProvider(
     id: string
   ) {
 
     await supabase
       .from("providers")
-      .update({
-        approved: false,
-      })
+      .delete()
       .eq("id", id);
 
-    fetchProviders();
+    loadData();
   }
 
-  async function resolveReport(
-    id: string
+  async function togglePremium(
+    id: string,
+    current: boolean
   ) {
-
-    await supabase
-      .from("reports")
-      .update({
-        resolved: true,
-      })
-      .eq("id", id);
-
-    fetchReports();
-  }
-
-  async function approveVerification(
-    verification: any
-  ) {
-
-    await supabase
-      .from(
-        "provider_verifications"
-      )
-      .update({
-        verified: true,
-      })
-      .eq("id", verification.id);
 
     await supabase
       .from("providers")
       .update({
-        verified: true,
-        trust_score: 100,
-      })
-      .eq(
-        "id",
-        verification.provider_id
-      );
-
-    fetchVerifications();
-  }
-
-  async function rejectVerification(
-    id: string
-  ) {
-
-    await supabase
-      .from(
-        "provider_verifications"
-      )
-      .update({
-        rejected: true,
+        premium: !current,
       })
       .eq("id", id);
 
-    fetchVerifications();
+    loadData();
   }
 
-  if (loading) {
+  async function toggleFeatured(
+    id: string,
+    current: boolean
+  ) {
 
-    return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center text-4xl">
-        Loading...
-      </div>
-    );
+    await supabase
+      .from("providers")
+      .update({
+        featured: !current,
+      })
+      .eq("id", id);
+
+    loadData();
+  }
+
+  async function toggleVerified(
+    id: string,
+    current: boolean
+  ) {
+
+    await supabase
+      .from("providers")
+      .update({
+        verified: !current,
+      })
+      .eq("id", id);
+
+    loadData();
+  }
+
+  async function boostAI(
+    id: string,
+    current: number
+  ) {
+
+    await supabase
+      .from("providers")
+      .update({
+        ai_score:
+          (current || 0) + 10,
+      })
+      .eq("id", id);
+
+    loadData();
+  }
+
+  async function boostTrust(
+    id: string,
+    current: number
+  ) {
+
+    await supabase
+      .from("providers")
+      .update({
+        trust_score:
+          (current || 0) + 10,
+      })
+      .eq("id", id);
+
+    loadData();
   }
 
   return (
-    <main className="bg-black text-white min-h-screen">
 
-      <Navbar />
+    <main className="min-h-screen bg-black text-white">
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <section className="max-w-[1600px] mx-auto px-6 py-32">
 
-        <div className="flex justify-between items-center mb-16">
+        <div className="mb-20">
 
-          <div>
+          <p className="uppercase tracking-[0.4em] text-red-500 font-black mb-6">
+            EKA CONTROL CENTER
+          </p>
 
-            <h1 className="text-7xl font-bold">
-              Admin Control Center
-            </h1>
+          <h1 className="text-8xl font-black leading-none mb-8">
+            Super Admin Panel
+          </h1>
 
-            <p className="text-zinc-400 text-2xl mt-4">
-              Marketplace operations & moderation
-            </p>
-
-          </div>
-
-          <div className="bg-red-500 px-6 py-3 rounded-full text-xl font-black">
-            SUPER ADMIN
-          </div>
+          <p className="text-zinc-500 text-2xl max-w-3xl">
+            Complete control over providers,
+            AI ranking systems, bookings,
+            premium systems and marketplace growth.
+          </p>
 
         </div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-20">
+        <div className="grid lg:grid-cols-4 gap-8 mb-20">
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass-heavy rounded-[40px] p-8">
 
-            <p className="text-zinc-500 text-xl">
+            <p className="text-zinc-500 mb-5 text-lg">
               Providers
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              {stats.providers}
+            <h2 className="text-7xl font-black">
+              {stats.totalProviders}
             </h2>
 
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass-heavy rounded-[40px] p-8">
 
-            <p className="text-zinc-500 text-xl">
-              Jobs
-            </p>
-
-            <h2 className="text-6xl font-bold mt-4">
-              {stats.jobs}
-            </h2>
-
-          </div>
-
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
-
-            <p className="text-zinc-500 text-xl">
+            <p className="text-zinc-500 mb-5 text-lg">
               Bookings
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              {stats.bookings}
+            <h2 className="text-7xl font-black">
+              {stats.totalBookings}
             </h2>
 
           </div>
 
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8">
+          <div className="glass-heavy rounded-[40px] p-8 border border-green-500/20">
 
-            <p className="text-zinc-500 text-xl">
-              Reports
+            <p className="text-zinc-500 mb-5 text-lg">
+              Revenue
             </p>
 
-            <h2 className="text-6xl font-bold mt-4">
-              {stats.reports}
+            <h2 className="text-7xl font-black text-green-400">
+              Rs {stats.revenue}
+            </h2>
+
+          </div>
+
+          <div className="glass-heavy rounded-[40px] p-8 border border-red-500/20">
+
+            <p className="text-zinc-500 mb-5 text-lg">
+              Pending
+            </p>
+
+            <h2 className="text-7xl font-black text-red-400">
+              {stats.pendingProviders}
             </h2>
 
           </div>
 
         </div>
 
-        <section className="mb-24">
+        <div className="glass-heavy rounded-[40px] p-10 mb-16">
 
-          <h2 className="text-5xl font-bold mb-10">
-            Verification Requests
-          </h2>
+          <div className="flex items-center justify-between mb-10">
 
-          <div className="space-y-6">
+            <div>
 
-            {verifications.map(
-              (verification) => (
+              <h2 className="text-5xl font-black mb-3">
+                Provider Control Center
+              </h2>
 
-                <div
-                  key={verification.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8"
-                >
+              <p className="text-zinc-500 text-xl">
+                Manage marketplace intelligence
+              </p>
 
-                  <div className="grid md:grid-cols-3 gap-5 mb-8">
-
-                    <img
-                      src={
-                        verification.citizenship_front
-                      }
-                      className="rounded-2xl h-[250px] object-cover w-full"
-                    />
-
-                    <img
-                      src={
-                        verification.citizenship_back
-                      }
-                      className="rounded-2xl h-[250px] object-cover w-full"
-                    />
-
-                    <img
-                      src={
-                        verification.selfie_image
-                      }
-                      className="rounded-2xl h-[250px] object-cover w-full"
-                    />
-
-                  </div>
-
-                  <div className="flex gap-4">
-
-                    <button
-                      onClick={() =>
-                        approveVerification(
-                          verification
-                        )
-                      }
-                      className="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-2xl text-xl font-bold"
-                    >
-                      Approve
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        rejectVerification(
-                          verification.id
-                        )
-                      }
-                      className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-2xl text-xl font-bold"
-                    >
-                      Reject
-                    </button>
-
-                  </div>
-
-                </div>
-
-              )
-            )}
+            </div>
 
           </div>
 
-        </section>
+          <div className="space-y-8">
 
-        <section className="mb-24">
+            {providers.map((provider) => (
 
-          <h2 className="text-5xl font-bold mb-10">
-            Fraud Reports
-          </h2>
+              <div
+                key={provider.id}
+                className="bg-black rounded-[36px] p-8 border border-white/5"
+              >
 
-          <div className="space-y-6">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-10">
 
-            {reports.map(
-              (report) => (
+                  <div className="flex items-center gap-6">
 
-                <div
-                  key={report.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8"
-                >
-
-                  <h3 className="text-3xl font-bold">
-                    {
-                      report.reporter_name
-                    }
-                  </h3>
-
-                  <p className="text-zinc-300 text-xl mt-5">
-                    {report.reason}
-                  </p>
-
-                  <button
-                    onClick={() =>
-                      resolveReport(
-                        report.id
-                      )
-                    }
-                    className="mt-8 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded-2xl text-lg font-bold"
-                  >
-                    Resolve
-                  </button>
-
-                </div>
-
-              )
-            )}
-
-          </div>
-
-        </section>
-
-        <section>
-
-          <h2 className="text-5xl font-bold mb-10">
-            Provider Management
-          </h2>
-
-          <div className="space-y-6">
-
-            {providers.map(
-              (provider) => (
-
-                <div
-                  key={provider.id}
-                  className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 flex justify-between items-center"
-                >
-
-                  <div>
-
-                    <h3 className="text-3xl font-bold">
-                      {
-                        provider.full_name
+                    <img
+                      src={
+                        provider.image ||
+                        "https://placehold.co/200x200"
                       }
-                    </h3>
+                      className="w-28 h-28 rounded-[32px] object-cover border border-white/10"
+                    />
 
-                    <p className="text-zinc-400 text-xl mt-3">
-                      {
-                        provider.service_category
-                      }
-                    </p>
+                    <div>
+
+                      <div className="flex flex-wrap items-center gap-3 mb-3">
+
+                        <h3 className="text-4xl font-black">
+                          {provider.full_name}
+                        </h3>
+
+                        {provider.verified && (
+
+                          <div className="bg-blue-500 px-4 py-2 rounded-full text-sm font-black">
+                            VERIFIED
+                          </div>
+
+                        )}
+
+                        {provider.premium && (
+
+                          <div className="bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-black">
+                            PREMIUM
+                          </div>
+
+                        )}
+
+                        {provider.featured && (
+
+                          <div className="bg-red-500 px-4 py-2 rounded-full text-sm font-black">
+                            FEATURED
+                          </div>
+
+                        )}
+
+                      </div>
+
+                      <p className="text-zinc-400 text-xl mb-4">
+                        {provider.service_category}
+                      </p>
+
+                      <div className="flex flex-wrap gap-4">
+
+                        <div className="bg-zinc-900 px-5 py-3 rounded-2xl">
+                          AI:
+                          {" "}
+                          <span className="text-green-400 font-black">
+                            {provider.ai_score || 0}
+                          </span>
+                        </div>
+
+                        <div className="bg-zinc-900 px-5 py-3 rounded-2xl">
+                          Trust:
+                          {" "}
+                          <span className="text-blue-400 font-black">
+                            {provider.trust_score || 0}
+                          </span>
+                        </div>
+
+                        <div className="bg-zinc-900 px-5 py-3 rounded-2xl">
+                          Bookings:
+                          {" "}
+                          <span className="font-black">
+                            {provider.total_bookings || 0}
+                          </span>
+                        </div>
+
+                      </div>
+
+                    </div>
 
                   </div>
 
-                  <div className="flex gap-4">
+                  <div className="grid md:grid-cols-3 gap-4 min-w-[500px]">
 
-                    {!provider.approved ? (
+                    {!provider.approved && (
 
                       <button
                         onClick={() =>
@@ -470,38 +361,206 @@ export default function AdminPage() {
                             provider.id
                           )
                         }
-                        className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-2xl text-lg font-bold"
+                        className="bg-green-500 hover:bg-green-600 h-16 rounded-2xl font-black transition"
                       >
                         Approve
                       </button>
 
-                    ) : (
-
-                      <button
-                        onClick={() =>
-                          banProvider(
-                            provider.id
-                          )
-                        }
-                        className="bg-red-500 hover:bg-red-600 px-6 py-3 rounded-2xl text-lg font-bold"
-                      >
-                        Ban
-                      </button>
-
                     )}
+
+                    <button
+                      onClick={() =>
+                        togglePremium(
+                          provider.id,
+                          provider.premium
+                        )
+                      }
+                      className="bg-yellow-500 hover:bg-yellow-600 text-black h-16 rounded-2xl font-black transition"
+                    >
+                      {provider.premium
+                        ? "Remove Premium"
+                        : "Make Premium"}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleFeatured(
+                          provider.id,
+                          provider.featured
+                        )
+                      }
+                      className="bg-red-500 hover:bg-red-600 h-16 rounded-2xl font-black transition"
+                    >
+                      {provider.featured
+                        ? "Unfeature"
+                        : "Feature"}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleVerified(
+                          provider.id,
+                          provider.verified
+                        )
+                      }
+                      className="bg-blue-500 hover:bg-blue-600 h-16 rounded-2xl font-black transition"
+                    >
+                      {provider.verified
+                        ? "Unverify"
+                        : "Verify"}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        boostAI(
+                          provider.id,
+                          provider.ai_score
+                        )
+                      }
+                      className="bg-white text-black hover:scale-[1.03] h-16 rounded-2xl font-black transition"
+                    >
+                      Boost AI
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        boostTrust(
+                          provider.id,
+                          provider.trust_score
+                        )
+                      }
+                      className="bg-zinc-800 hover:bg-zinc-700 h-16 rounded-2xl font-black transition"
+                    >
+                      Boost Trust
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        removeProvider(
+                          provider.id
+                        )
+                      }
+                      className="bg-red-950 hover:bg-red-900 h-16 rounded-2xl font-black transition md:col-span-3"
+                    >
+                      Remove Provider
+                    </button>
 
                   </div>
 
                 </div>
 
-              )
-            )}
+              </div>
+
+            ))}
 
           </div>
 
-        </section>
+        </div>
 
-      </div>
+        <div className="grid lg:grid-cols-2 gap-8">
+
+          <div className="glass-heavy rounded-[40px] p-10">
+
+            <h2 className="text-5xl font-black mb-10">
+              Live Bookings
+            </h2>
+
+            <div className="space-y-5">
+
+              {bookings.map((booking) => (
+
+                <div
+                  key={booking.id}
+                  className="bg-black rounded-[28px] p-6 border border-white/5"
+                >
+
+                  <div className="flex items-center justify-between">
+
+                    <div>
+
+                      <h3 className="text-2xl font-black mb-2">
+                        {booking.customer_name}
+                      </h3>
+
+                      <p className="text-zinc-500">
+                        {booking.message}
+                      </p>
+
+                    </div>
+
+                    <div className="text-right">
+
+                      <p className="text-green-400 font-black text-lg mb-2">
+                        {booking.status}
+                      </p>
+
+                      <p className="text-zinc-500 text-sm">
+                        Live Booking
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          </div>
+
+          <div className="glass-heavy rounded-[40px] p-10">
+
+            <h2 className="text-5xl font-black mb-10">
+              AI Marketplace Status
+            </h2>
+
+            <div className="space-y-6">
+
+              <div className="bg-black rounded-[30px] p-8">
+
+                <p className="text-zinc-500 mb-4">
+                  AI Matching Accuracy
+                </p>
+
+                <h3 className="text-6xl font-black text-green-400">
+                  98%
+                </h3>
+
+              </div>
+
+              <div className="bg-black rounded-[30px] p-8">
+
+                <p className="text-zinc-500 mb-4">
+                  Realtime Activity
+                </p>
+
+                <h3 className="text-6xl font-black text-red-400">
+                  LIVE
+                </h3>
+
+              </div>
+
+              <div className="bg-black rounded-[30px] p-8">
+
+                <p className="text-zinc-500 mb-4">
+                  Marketplace Growth
+                </p>
+
+                <h3 className="text-6xl font-black text-blue-400">
+                  +42%
+                </h3>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
 
     </main>
   );

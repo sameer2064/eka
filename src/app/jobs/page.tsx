@@ -1,42 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
 
 export default function JobsPage() {
+
   const [jobs, setJobs] =
     useState<any[]>([]);
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [title, setTitle] =
-    useState("");
-
-  const [description,
-    setDescription] =
-    useState("");
-
-  const [city, setCity] =
-    useState("");
-
-  const [budget, setBudget] =
-    useState("");
-
-  const [customerName,
-    setCustomerName] =
-    useState("");
-
-  const [customerPhone,
-    setCustomerPhone] =
+  const [search, setSearch] =
     useState("");
 
   useEffect(() => {
-    fetchJobs();
+
+    loadJobs();
+
   }, []);
 
-  async function fetchJobs() {
+  async function loadJobs() {
+
     const { data } =
       await supabase
         .from("jobs")
@@ -46,222 +28,100 @@ export default function JobsPage() {
         });
 
     setJobs(data || []);
-
-    setLoading(false);
   }
 
-  async function createJob(
-    e: any
-  ) {
-    e.preventDefault();
-
-    const { error } =
-      await supabase
-        .from("jobs")
-        .insert([
-          {
-            customer_name:
-              customerName,
-            customer_phone:
-              customerPhone,
-            title,
-            description,
-            city,
-            budget:
-              Number(budget),
-            status: "open",
-          },
-        ]);
-
-    if (error) {
-      alert("Job creation failed");
-    } else {
-      alert("Job posted");
-
-      setTitle("");
-      setDescription("");
-      setCity("");
-      setBudget("");
-      setCustomerName("");
-      setCustomerPhone("");
-
-      fetchJobs();
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-black text-white min-h-screen flex items-center justify-center text-4xl">
-        Loading...
-      </div>
+  const filteredJobs =
+    jobs.filter((job) =>
+      job.title
+        ?.toLowerCase()
+        .includes(search.toLowerCase())
     );
-  }
 
   return (
-    <main className="bg-black text-white min-h-screen">
 
-      <Navbar />
+    <main className="min-h-screen bg-black text-white">
 
-      <div className="max-w-7xl mx-auto px-6 py-16">
+      <section className="max-w-7xl mx-auto px-6 py-32">
 
-        <div className="flex justify-between items-center mb-14">
+        <div className="mb-14">
 
-          <div>
+          <p className="uppercase tracking-[0.3em] text-red-500 font-bold mb-5">
+            AI JOB MARKETPLACE
+          </p>
 
-            <h1 className="text-6xl font-bold">
-              Marketplace Jobs
-            </h1>
+          <h1 className="text-7xl font-black mb-8">
+            Explore Jobs
+          </h1>
 
-            <p className="text-zinc-400 text-xl mt-4">
-              Customers post jobs. Providers compete.
-            </p>
-
-          </div>
-
-          <div className="bg-red-500 px-6 py-3 rounded-full text-xl font-bold">
-            LIVE MARKETPLACE
-          </div>
-
-        </div>
-
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 mb-20">
-
-          <h2 className="text-5xl font-bold mb-10">
-            Post a Job
-          </h2>
-
-          <form
-            onSubmit={createJob}
-            className="space-y-5"
-          >
-
-            <input
-              value={customerName}
-              onChange={(e) =>
-                setCustomerName(
-                  e.target.value
-                )
-              }
-              placeholder="Your Name"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <input
-              value={customerPhone}
-              onChange={(e) =>
-                setCustomerPhone(
-                  e.target.value
-                )
-              }
-              placeholder="Phone Number"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <input
-              value={title}
-              onChange={(e) =>
-                setTitle(
-                  e.target.value
-                )
-              }
-              placeholder="Job Title"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <textarea
-              value={description}
-              onChange={(e) =>
-                setDescription(
-                  e.target.value
-                )
-              }
-              placeholder="Describe the work needed"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none h-40"
-              required
-            />
-
-            <input
-              value={city}
-              onChange={(e) =>
-                setCity(
-                  e.target.value
-                )
-              }
-              placeholder="City"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <input
-              type="number"
-              value={budget}
-              onChange={(e) =>
-                setBudget(
-                  e.target.value
-                )
-              }
-              placeholder="Budget"
-              className="w-full bg-black border border-zinc-800 rounded-2xl p-5 text-xl outline-none"
-              required
-            />
-
-            <button
-              type="submit"
-              className="w-full bg-red-500 hover:bg-red-600 py-5 rounded-2xl text-2xl font-bold"
-            >
-              Post Job
-            </button>
-
-          </form>
+          <input
+            placeholder="Search jobs..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+            className="input-primary"
+          />
 
         </div>
 
-        <div className="space-y-8">
+        <div className="grid lg:grid-cols-2 gap-8">
 
-          {jobs.map((job) => (
+          {filteredJobs.map((job) => (
 
             <div
               key={job.id}
-              className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10"
+              className="premium-card rounded-[36px] p-8 relative overflow-hidden"
             >
 
-              <div className="flex justify-between items-start">
+              {job.featured && (
 
-                <div>
-
-                  <h2 className="text-5xl font-bold">
-                    {job.title}
-                  </h2>
-
-                  <p className="text-zinc-400 text-xl mt-5">
-                    📍 {job.city}
-                  </p>
-
+                <div className="absolute top-5 right-5 bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-black">
+                  FEATURED
                 </div>
 
-                <div className="bg-green-500 text-black px-5 py-2 rounded-full font-black text-xl">
-                  Rs. {job.budget}
-                </div>
+              )}
+
+              <div className="mb-8">
+
+                <h2 className="text-4xl font-black mb-4">
+                  {job.title}
+                </h2>
+
+                <p className="text-zinc-400 text-xl">
+                  {job.company}
+                </p>
 
               </div>
 
-              <p className="text-zinc-300 text-2xl mt-8 leading-10">
+              <div className="flex flex-wrap gap-3 mb-8">
+
+                <div className="bg-black rounded-full px-5 py-3 text-sm border border-white/5">
+                  📍 {job.location}
+                </div>
+
+                <div className="bg-black rounded-full px-5 py-3 text-sm border border-white/5">
+                  💰 Rs {job.salary}
+                </div>
+
+                {job.urgent && (
+
+                  <div className="bg-red-500 rounded-full px-5 py-3 text-sm font-bold">
+                    URGENT
+                  </div>
+
+                )}
+
+              </div>
+
+              <p className="text-zinc-300 leading-relaxed text-lg mb-8">
+
                 {job.description}
+
               </p>
 
-              <div className="mt-10">
-
-                <a
-                  href={`/jobs/${job.id}`}
-                  className="bg-red-500 hover:bg-red-600 px-8 py-4 rounded-2xl text-2xl font-bold inline-block"
-                >
-                  View Job
-                </a>
-
-              </div>
+              <button className="button-primary w-full">
+                Apply Now
+              </button>
 
             </div>
 
@@ -269,7 +129,7 @@ export default function JobsPage() {
 
         </div>
 
-      </div>
+      </section>
 
     </main>
   );
